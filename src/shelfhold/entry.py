@@ -75,6 +75,22 @@ def phase(stage):
     return dict(result['sections'][known[stage]],run_id=result['run_id'])
 
 
+@routes.route('/api/shelfhold/shift-review')
+def shift_review():
+    """旧班回看：班结快照、晚到登记与逐单计分依据，不改动任何当班结论。"""
+    try:
+        number=request.args.get('capacity','12')
+        if not number.isascii() or not number.isdecimal() or len(number)>2:
+            raise ValueError('复核额度写法不正确')
+        result=CACHE(*seating(int(number),request.args.get('strategy','balanced')))
+    except ValueError as invalid:
+        return failure(str(invalid))
+    stage=next(section for section in result['sections'] if section['key']=='shift_archive')
+    return {'run_id':result['run_id'],'archive':result['shift_archive'],
+            'summary':stage['records'],'late_arrivals':stage['errors'],
+            'review_rows':stage['review_rows']}
+
+
 def make_app():
     configured=Flask(__name__,static_folder='web/static',template_folder='web/templates')
     configured.config.update(MAX_CONTENT_LENGTH=1_500_000)

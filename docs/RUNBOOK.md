@@ -8,6 +8,7 @@
 | `GET /api/shelfhold/overview` | 默认额度和样例处置 |
 | `POST /api/shelfhold/run` | 用 `capacity` 和 `strategy` 调整派单，也可同时提供 `records` 与 `as_of` |
 | `GET /api/shelfhold/stages/<环节>` | 样例的分环节核对，可传相同额度、策略 |
+| `GET /api/shelfhold/shift-review` | 班结回看：归档凭证、晚到登记与逐单计分依据 |
 
 导入 JSON 对象时 `records` 为 1–2500 条单据，`as_of` 为整数工日；默认第 96 日。额度接受 1–60，策略接受 `balanced` 或 `focus`。入站异常保留于第一环节。整批缺少成熟窗口时响应 422 并给出原因。
 

@@ -10,6 +10,8 @@ from .tail_replay import service as calibration_service
 from .reading_mix import service as monitor_service
 from .release_review import service as dispatch_service
 from .hold_catalogue import service as audit_service
+from .shift_archive import service as archive_service
+from .shift_archive import intake as archive_intake
 from .patron_cutoffs import contracts as window_contract
 
 PRESET = Path(__file__).resolve().parents[2] / 'sample_data' / 'hold_slips_sample.json'
@@ -20,7 +22,8 @@ MODULES = (('hold_slips', '预约回执'),
  ('tail_replay', '余时回放'),
  ('reading_mix', '借阅分组'),
  ('release_review', '释放复核'),
- ('hold_catalogue', '留架清册'))
+ ('hold_catalogue', '留架清册'),
+ ('shift_archive', '班结回看'))
 DISPLAY = {'title': '图书预约留架册',
  'object_name': '预约单',
  'unit': '小时',
@@ -124,6 +127,14 @@ def execute(documents, capacity=12, mode='balanced', *, as_of=96):
     sector = calibration_service.sector_replay(evaluated, 34)
     operating_shift = monitor_service.shop_floor_shift(features.train, features.live)
     field_evidence = audit_service.sign_field_evidence(row_list, allocation)
+    # 班结快照：旧班预测与派单冻结；晚到单据只登记，不回写任何当班结论。
+    _on_time, late_arrivals, conflict_keys, _late_issues = archive_intake.collect(documents, as_of)
+    shift_archive = archive_service.build_archive(
+        row_list, late_arrivals, conflict_keys, closed_at=as_of, cutoff=as_of,
+        batch_hash=closed.batch_hash, policy_hash=closed.policy_hash, run_id=closed.stamp,
+        capacity=capacity, mode=mode)
+    shift_review = archive_service.settle_shift(shift_archive)
+    review_summary, review_detail = archive_service.review_evidence(shift_review, shift_archive)
     features_glance = feature_service.feature_evidence(state) + feature_service.measure_review(features)
     weight_rows = [{'量测': key, '取值': value} for key, value in kernel.evidence]
     ignored = [issue.evidence() for issue in intake.issues]
@@ -139,6 +150,12 @@ def execute(documents, capacity=12, mode='balanced', *, as_of=96):
     ]
     details[6]['operating_rows'] = operating_rows
     details[6]['operating_title'] = '留架回访安排'
+    # 旧班回看：逐单核对余时、派单与事后计分依据，晚到记录不改动冻结快照。
+    details.append(stage_at(8, f'班结归档 {shift_archive.archive_stamp} · 已计分 {shift_review.scored} 单',
+                            review_summary + [{'核对项': '晚到登记', '数量/取值': shift_review.late_arrivals}],
+                            archive_service.late_evidence(shift_archive)))
+    details[8]['review_rows'] = review_detail
+    details[8]['review_title'] = '旧班逐单回看'
     points = [{'label': row['key'], 'value': row['estimate'], 'state': row['state'], 'zone': row['zone'],
                'upper': row['interval'], 'cost': row['cost']} for row in sorted(row_list, key=lambda row: row['key'])]
     def estimate(vector):
@@ -156,6 +173,13 @@ def execute(documents, capacity=12, mode='balanced', *, as_of=96):
               'policy_hash': closed.policy_hash, 'feature_stamp': state.fingerprint,
               'model': kernel.name, 'run_id': closed.stamp, 'object_name': DISPLAY['object_name'],
               'unit': DISPLAY['unit'], 'sections': details, 'flow_counts': list(states.items()),
+ 'shift_archive': {'archive_stamp': shift_archive.archive_stamp, 'closed_at': shift_archive.closed_at,
+                   'cutoff': shift_archive.cutoff, 'run_id': shift_archive.run_id,
+                   'scoring': {'status': shift_review.status, 'scored': shift_review.scored,
+                               'excluded_conflict': shift_review.excluded_conflict,
+                               'awaiting_pickup': shift_review.awaiting_pickup,
+                               'late_arrivals': shift_review.late_arrivals,
+                               'mae': shift_review.mae, 'rmse': shift_review.rmse, 'bias': shift_review.bias}},
               'measures': {'notice_lag': ('通知送达延迟', 'h'),
  'walk_mins': ('取件步行估计', 'min'),
  'weekday': ('通知星期', '日'),

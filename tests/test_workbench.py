@@ -7,8 +7,9 @@ ROUTE = '/api/shelfhold'
 
 def test_preset_workbench_has_real_business_rows():
     output = app.test_client().get(ROUTE+'/overview').get_json()
-    assert len(output['metrics']) == 5 and len(output['sections']) == 8
+    assert len(output['metrics']) == 5 and len(output['sections']) == 9
     assert len(output['rows']) >= 10
+    assert output['sections'][8]['key'] == 'shift_archive'
     assert output['model'] == 'Kaplan–Meier 留架尾部估计'
 
 

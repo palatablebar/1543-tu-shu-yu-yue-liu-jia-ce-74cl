@@ -129,6 +129,16 @@ function showDetail() {
         }});
         card.append(plan);
     }
+    if (panel.review_rows?.length) {
+        const review = node('details',undefined,'rejected');
+        review.open = true;
+        review.append(node('summary',`${panel.review_title} · ${panel.review_rows.length} 单`));
+        showTables(review,panel.review_rows,{linkKey:'单号',choose: record => {
+            const ticket = ledger.rows.find(item => item.key === record['单号']);
+            if (ticket) inspect(ticket);
+        }});
+        card.append(review);
+    }
     showTables(card,panel.records);
     if (panel.errors.length > 0) {
         const rejected = node('details',undefined,'rejected');

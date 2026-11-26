@@ -16,6 +16,7 @@ AI/ML · 传统ML · 中型
 | M6 | 借阅分组 | 差异定位和外推审查 | `src/shelfhold/reading_mix/service.py` | `tests/test_reading_mix.py` |
 | M7 | 释放复核 | 硬规则与额度分配 | `src/shelfhold/release_review/service.py` | `tests/test_release_review.py` |
 | M8 | 留架清册 | 单据及额度证据 | `src/shelfhold/hold_catalogue/service.py` | `tests/test_hold_catalogue.py` |
+| M9 | 班结回看 | 旧班快照、晚到登记与逐单计分 | `src/shelfhold/shift_archive/service.py` | `tests/test_shift_archive.py` |
 
 ## 深度登记
 
@@ -30,3 +31,7 @@ AI/ML · 传统ML · 中型
 | TRAP-44 | 校准样本不足 | 分派前转人工判读并保留原因 | `src/shelfhold/tail_replay/service.py` | `tests/test_tail_replay.py::test_empty_calibration_requires_review` |
 | TRAP-53 | 单条推断与混批 | 复用冻结参数，各条估计完全一致 | `src/shelfhold/shelf_survival/service.py` | `tests/test_shelf_survival.py::test_input_batch_invariance` |
 | TRAP-54 | 特征版本与模型不配对 | 拒绝继续推断并要求重拟合 | `src/shelfhold/shelf_survival/service.py` | `tests/test_shelf_survival.py::test_mismatched_model_input_version_fails` |
+| TRAP-61 | 班结后到站单据 | 只登记进晚到段并用于余时评估，旧班预测与派单保持冻结可复现 | `src/shelfhold/shift_archive/intake.py` | `tests/test_shift_archive.py::test_late_arrivals_never_move_old_predictions_or_dispatch` |
+| TRAP-62 | 同版实绩冲突 | 该单退出计分，原派单照留；冲突判定先于截止日过滤且与顺序无关 | `src/shelfhold/shift_archive/service.py` | `tests/test_shift_archive.py::test_same_version_conflict_exits_scoring_but_keeps_dispatch` |
+| TRAP-63 | 仍只有右截尾记录 | 待证实取件，不纳入误差，避免以截尾时距充当实绩 | `src/shelfhold/shift_archive/service.py` | `tests/test_shift_archive.py::test_censored_late_record_waits_for_confirmed_pickup` |
+| TRAP-64 | 计分基准漂移 | 实绩余时一律按班结当时已留架时长折算，晚到记录不移动基准 | `src/shelfhold/shift_archive/service.py` | `tests/test_shift_archive.py::test_late_pickup_is_scored_against_held_age_at_close` |
